@@ -1,0 +1,128 @@
+import numpy as np
+import pandas as pd
+import psycopg2
+import datetime
+import time 
+from datetime import date, datetime, timedelta
+import warnings
+import pysftp
+import schedule
+import config 
+warnings.simplefilter("ignore")
+
+def obtain_list_db_tickers(conn):
+    with conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, ticker, class, market_cap FROM symbol")
+        return [(d[0], d[1], d[2],  d[3]) for d in cur.fetchall()]
+ 
+    
+def read_sql(stock_data, conn): 
+    stock_querry =  """
+            Select distinct asset_id, date_price, open_price, high_price, low_price, close_price from daily_data
+            JOIN symbol ON symbol.id = daily_data.asset_id
+            """
+    df = pd.read_sql_query(stock_querry, con=conn) 
+    UniqueNames = df.asset_id.unique()
+    stocks = {elem : pd.DataFrame() for elem in UniqueNames}
+    for key in stocks.keys():
+        stocks[key] = df[:][df.asset_id == key]
+      
+    for stock in stock_data: 
+        symbol_id = stock[0]
+        symbol = stock[1]
+        try: 
+            stocks[symbol_id]['symbol'] = symbol
+            stocks[symbol_id].drop(columns= ['asset_id'], inplace  = True)
+            cols = ['date_price','symbol',  'close_price']
+            stocks[symbol_id]= stocks[symbol_id][cols].set_index('date_price')
+        except:
+            continue
+    dfs = pd.concat(stocks).reset_index()
+    pivot = pd.pivot_table(dfs, index =['date_price'], columns ='symbol', values= 'close_price')
+    pivot.index = pivot.index.astype('datetime64[ns]')
+    return pivot
+
+def period_data(pivoted_df, look_back): 
+    return pivoted_df[-look_back:]   
+
+def returns_fn(return_series): 
+    mu = return_series.pct_change().mean()
+    return pd.DataFrame(mu).rename(columns={0:'returns'}).reset_index()
+
+def sigma_fn(return_series):
+    sigma = return_series.std() 
+    sigma = pd.DataFrame(sigma, columns = ['sigma'])
+    return sigma.reset_index()
+
+def max_drawdown(data):
+    roll_max = data.cummax()
+    daily_drawdown = data/roll_max - 1.0
+    max_drawdowns = daily_drawdown.cummin().min()
+    max_drawdowns = pd.DataFrame(max_drawdowns, columns =['max_dd'])
+    return max_drawdowns.reset_index()
+
+
+def scores_fn(sigma, mu, max_dd, stock_data): 
+    stocks = pd.DataFrame(stock_data, columns = ['id', 'symbol', 'class', 'market_cap'])
+    stocks = stocks.drop(columns = ['id'])
+    score = stocks.merge(max_dd, how = 'right')
+    score = score.merge(sigma, how='right')
+    score = score.merge(mu, how='right')
+    score['score'] = (score['sigma'] + abs(score['max_dd']))/2
+    score['alpha'] = score['returns'] - float(mu.loc[mu['symbol'] == '$SPX.X']['returns'])
+    score['score1'] =  score['score'].rank(ascending=True)
+    scores =  score[score['score'] < float(score.loc[score['symbol'] == '$SPX.X']['score'])]
+    scores['score2'] = scores['alpha'].rank(ascending=False)
+    scores['score3'] = ((scores['score1'] +  scores['score2'])/2)
+    scores = scores.merge(stocks, how = 'left') 
+    scores['score6'] = scores['market_cap'].rank(ascending = True)[scores['market_cap'] <= 1000000000] 
+    scores['score3'] = scores['score3'][pd.isnull(scores['score6'])]
+    top_scores = scores.sort_values('score3', ascending= True).groupby('class', 
+                                  sort=False).head(5).drop_duplicates(subset= 'symbol', keep= 'first')
+    top_scores = top_scores.sort_values('score3', ascending= True).groupby('class', sort=False).head(2)
+    return score, scores, top_scores
+    
+
+def df_many_sheets(list_of_df_to_dump, list_of_tab_names, file_name): 
+    writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
+    for df, tab_name in zip(list_of_df_to_dump, list_of_tab_names):
+        df.to_excel(writer, tab_name, index=False)
+    writer.save()
+    
+def main(): 
+    db_user = config.db_user
+    db_host = config.db_host
+    db_name  = config.db_name
+    db_password = config.db_password
+    conn = psycopg2.connect(host=db_host, database=db_name, user=db_user, password=db_password)
+    stock_data = obtain_list_db_tickers(conn) 
+    df = read_sql(stock_data, conn)
+    look_back = [7,30, 90, 180, 360]
+    score_list = []
+    scores_list = []
+    top_scores_list  = []
+    for i in look_back: 
+        data = period_data(df, i)
+        returns_df = data.pct_change()[1:]
+        sigma = sigma_fn(returns_df)
+        max_dd = max_drawdown(data)
+        mu = returns_fn(data)
+        score, scores, top_scores = scores_fn(sigma, mu, max_dd, stock_data)
+        score_list.append(score)
+        scores_list.append(scores)
+        top_scores_list.append(top_scores)
+        list_of_tab_names = '7', '30', '90', '180', '360'
+        df_many_sheets(score_list, list_of_tab_names, 'scores1.xlsx')
+        df_many_sheets(scores_list, list_of_tab_names, 'scores234.xlsx')
+        df_many_sheets(top_scores_list, list_of_tab_names, 'top_scores.xlsx')    
+
+def job():
+    job = main()
+    print("Saving files locally...")
+    
+schedule.every(24).hours.do(job)
+while True:
+    schedule.run_pending()
+    time.sleep(12)
+
