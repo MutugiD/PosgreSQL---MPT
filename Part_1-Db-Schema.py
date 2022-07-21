@@ -4,6 +4,7 @@ import config
 import os
 
 
+
 def create_db(db_credentials):
     db_host, db_user, db_password, db_name = db_credentials
     if check_db_exists(db_credentials):
