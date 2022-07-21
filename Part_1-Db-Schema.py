@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import config 
 import os
 
 
@@ -75,10 +76,10 @@ def create_mkt_tables(db_credentials):
 
 
 def main():
-    db_user = 'postgres'
-    db_name = 'demos'
-    db_host='127.0.0.1'
-    db_password = 'rock'
+    db_user = config.db_user
+    db_host = config.db_host
+    db_name  = config.db_name
+    db_password = config.db_password
     create_db([db_host, db_user, db_password, db_name])
     create_mkt_tables([db_host, db_user, db_password, db_name])
    
