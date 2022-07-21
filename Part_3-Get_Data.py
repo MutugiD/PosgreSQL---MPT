@@ -7,8 +7,7 @@ import requests
 import json 
 import config 
 
-
-key= '608XXXXXXXXXXXXXXXXXXXX@AMER.OAUTHAP'
+key= config.api_key
 
 start_date = "01-04-2018"
 end_date = "15-07-2022"
