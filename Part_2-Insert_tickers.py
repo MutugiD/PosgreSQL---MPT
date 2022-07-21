@@ -4,6 +4,7 @@ import psycopg2
 import requests
 import os
 import pandas as pd 
+import config 
 
 def parse_nasdaq_list(): 
     screener = pd.read_csv('assets-100.csv', encoding = 'latin-1')
@@ -26,10 +27,10 @@ def insert_symbols(symbols, db_host, db_user, db_password, db_name):
 
 
 def main():
-    db_user = 'postgres'
-    db_name = 'demos'
-    db_host='127.0.0.1'
-    db_password = 'rock'
+    db_user = config.db_user
+    db_host = config.db_host
+    db_name  = config.db_name
+    db_password = config.db_password
     symbols = parse_nasdaq_list()
     insert_symbols(symbols, db_host, db_user, db_password, db_name)
     print("%s symbols were successfully added." % len(symbols))  
