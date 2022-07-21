@@ -11,8 +11,7 @@ import time
 import warnings
 warnings.simplefilter("ignore")
 
-
-key= 'XXXXXXXXXXX@AMER.OAUTHAP'
+key= config.api_key
 
 def unix_time(dt):
     date = int(time.mktime(datetime.datetime.strptime(dt, "%d-%m-%Y").timetuple())*1000)
@@ -66,9 +65,10 @@ def load_data(symbol, symbol_id, conn, frequencyType):
 
 
 def main():
-    db_user = 'postgres'
-    db_name = 'assets'
-    db_host='127.0.0.1'
+    db_user = config.db_user
+    db_host = config.db_host
+    db_name  = config.db_name
+    db_password = config.db_password
     db_password = 'XXX'
     conn = psycopg2.connect(host=db_host, database=db_name, user=db_user, password=db_password)
     stock_data = obtain_list_db_tickers(conn)
