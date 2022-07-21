@@ -5,6 +5,7 @@ import pandas as pd
 import time 
 import requests 
 import json 
+import config 
 
 
 key= '608XXXXXXXXXXXXXXXXXXXX@AMER.OAUTHAP'
@@ -64,10 +65,10 @@ def load_data(symbol, symbol_id, conn, frequencyType):
 
 
 def main():
-    db_user = 'postgres'
-    db_name = 'demos'
-    db_host='127.0.0.1'
-    db_password = 'rock'
+    db_user = config.db_user
+    db_host = config.db_host
+    db_name  = config.db_name
+    db_password = config.db_password
     conn = psycopg2.connect(host=db_host, database=db_name, user=db_user, password=db_password)
     stock_data = obtain_list_db_tickers(conn)
     frequencyType='daily'  #daily, weekly, monthly
