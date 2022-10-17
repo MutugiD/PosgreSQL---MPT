@@ -13,3 +13,9 @@ Allow for a cron job scheduler to update the database every 12 hours.
 Starting off with market scanning for low-volatility tickers with higher than normal returns.  
 Feed the selected tickers into a MPT modelling function and perform backtesting to established whether the buys are  
 reasonably profits on rolling daily basis. Update database data will be the basis of updating the MPT model.  
+
+
+Under development 
+Replcement of CRON jobs with Airflow functions 
+Upgrading the DB schedulers with Apache Airflow schedulers 
+Pipeline automation with Airflow 
