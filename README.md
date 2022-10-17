@@ -1,4 +1,4 @@
-# PosgreSQL---MPT
+# Consertative Trading Stocks Screener 
 This repo has a number of functionalities:  
 1. Allow for scrapping for all NASDAQ listed tickers (stocks, REITs, mutual funds) data on daily basis.  
 2. Once daily data is pumped into a PostGreSQL database, it will be used for creating a simple low volatility-return model.  
